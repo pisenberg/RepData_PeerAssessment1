@@ -24,10 +24,16 @@ In order to answer this question we use a data.table and ggplot2 for plotting a 
 #lets first draw the histogram to get a feel for the data
 library(ggplot2)
 #then make the histogram
-qplot(steps,data=data,main="Histogram for number of steps")
+p1 <- qplot(steps,data=data,main="Histogram for number of steps")
+p1
+```
 
+So it seems that there are quite a few intervals with 0 steps taken.
+In order to complement this view, we look at a table showing mean and median for each day.
 
-#now on to the mean and median calculation. Load the package
+```{r}
+
+#now on to the mean and median calculation. Load the data.table package
 library(data.table)
 
 #then make a data table
@@ -35,11 +41,16 @@ dt <- data.table(data)
 
 #then calculate the mean and median per day
 meanMedian <- dt[,list(mean=mean(steps,na.rm=TRUE),median=median(steps, na.rm = TRUE)),by=date]
+meanMedian
 ```
 
 
+Indeed, the median is mostly 0 showing that there are many intervals with 0 steps taken per day.
+
+
 ## What is the average daily activity pattern?
-To answer this question we fist make a time series plot (line chart) of the 5-minute intervals (x-axis) and the average number of steps taken during each interval, averaged across all days (y-axis)
+Now we want to look closer at which intervals are active or not.
+We fist make a time series plot (line chart) of the 5-minute intervals (x-axis) and the average number of steps taken during each interval, averaged across all days (y-axis)
 
 ```{r}
 #get the mean steps per interval
@@ -49,16 +60,17 @@ meanIntervalSteps <- dt[,list(mean=mean(steps,na.rm=TRUE),median=median(steps, n
 ggplot(meanIntervalSteps,aes(interval,mean))+geom_line(colour = "royalblue2", size = 1)
 ```
 
-Now we'll try to calculate Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps
 
+Now we'll try to calculate Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps
 ```{r}
 meanIntervalSteps$interval[which.max(meanIntervalSteps$mean)]
 ```
 
+So the answer is interval 835. If we assume that the interval value is probably the number of minutes since midnight, then this is maybe this hour of the day (roughly): `r round(835/60)`:00. Maybe the subject takes a walk after lunch?
 
 
 ## Imputing missing values
-The presence of missing days may introduce bias into some calculations or summaries of the data. In order to deal with NAs we'll do the following:
+In order to deal with NAs we'll do the following:
 
 - Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
 
@@ -68,11 +80,7 @@ length(which(is.na(data$steps)))
 ```
 So the answer is: 2304 NA values
 
-- Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.
-
-We will replace NA values with the mean for that 5-minute interval over all days
-
-- Create a new dataset that is equal to the original dataset but with the missing data filled in.
+- Next we will replace NA values with the mean for that 5-minute interval over all days and create a new dataset that is equal to the original dataset but with the missing data filled in.
 
 ```{r}
 modifiedData <- data
@@ -90,19 +98,23 @@ for(i in 1:nrow(modifiedData)){
     }
 }
 
-head(modifiedData)
 ```
-
 
 
 - Now we make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. We want to see if these values differ from the estimates from the first part of the assignment. 
 
 ```{r}
+library(gridExtra)
 #first show the new and old histogram side by side to check if we can see a difference
-par(mfrow=c(2,1))
-qplot(steps,data=modifiedData,main="Histogram for number of steps with NAs replaced by mean per interval")
+p2 <- qplot(steps,data=modifiedData,main="Histogram for number of steps with NAs replaced by mean per interval")
+grid.arrange(p1, p2)
+```
 
-#then make a data table like before
+The histograms look fairly similar, but there are small difference (see y-axis and the interval around 600 on the x-axis).
+Now we'll calculate the differences in mean and median, just to see what the data looks like. If the value is 0 nothing has changed.
+
+```{r}
+#make a data table like before
 dt2 <- data.table(modifiedData)
 
 #then calculate the mean and median per day
@@ -114,13 +126,14 @@ names(differenceTable) <- c("original_mean","new_mean","original_median","new_me
 differenceTable$meanDifference <- differenceTable$original_mean - differenceTable$new_mean
 differenceTable$medianDifference <- differenceTable$original_median - differenceTable$new_median
 differenceTable
-
 ```
-We can see that indeed there are differences in that mean and median exist for all days now.
 
-Now, lets answer: What is the impact of imputing missing data on the estimates of the total daily number of steps?
+
+We can see that indeed there are a few differences in that mean and median exist for all days now.
+
+- Now, lets answer: What is the impact of imputing missing data on the estimates of the total daily number of steps?
 ```{r}
-#now look at the total number of daily steps
+#look at the total number of daily steps
 #first in the original data
 sumSteps <- dt[,list(stepCount=sum(steps,na.rm=TRUE)),by=date]
 #now in the replaced data
@@ -155,11 +168,12 @@ meanIntervalSteps_weekday <- dtweekday[,list(mean=mean(steps,na.rm=TRUE)),by=int
 dtweekend <- data.table(subset(modifiedData,weekend=="weekend"))
 meanIntervalSteps_weekend <- dtweekend[,list(mean=mean(steps,na.rm=TRUE)),by=interval]
 
-library(gridExtra)
+
 p2 <- ggplot(meanIntervalSteps_weekend,aes(interval,mean))+geom_line(colour = "royalblue2", size = 1) + ggtitle("Weekend")
 p1 <- ggplot(meanIntervalSteps_weekday,aes(interval,mean))+geom_line(colour = "royalblue2", size = 1) + ggtitle("Weekday")
 grid.arrange(p1, p2)
 
 ```
+
 So to answer the question, yes there are differences in patterns. The subject seems to be walking earlier on the weekend than on weekdays and also has more intervals with zero movement on the weekend. Lunchtime seems to involve quite a bit of walking in both cases.
     
